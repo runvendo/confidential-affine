@@ -13,7 +13,11 @@ export AWS_ENDPOINT="https://${R2_ACCOUNT_ID:?need R2_ACCOUNT_ID}.r2.cloudflares
 export AWS_S3_FORCE_PATH_STYLE="true"
 export AWS_REGION="${AWS_REGION:-auto}"
 export WALG_S3_PREFIX="s3://${R2_BUCKET:?need R2_BUCKET}/${WALG_PREFIX:?need WALG_PREFIX}"
-export WALG_LIBSODIUM_KEY="${ENCRYPTION_KEY:?need ENCRYPTION_KEY}"
+KEY_URL="${KEY_URL:-http://unlock:9090/key}"
+echo "[walg-entrypoint] waiting for data key from unlock-gate ($KEY_URL)..."
+until WALG_LIBSODIUM_KEY="$(curl -fsS --max-time 5 "$KEY_URL" 2>/dev/null)" && [ -n "$WALG_LIBSODIUM_KEY" ]; do sleep 3; done
+export WALG_LIBSODIUM_KEY
+echo "[walg-entrypoint] data key received from unlock-gate"
 export WALG_LIBSODIUM_KEY_TRANSFORM="${WALG_LIBSODIUM_KEY_TRANSFORM:-none}"
 export WALG_COMPRESSION_METHOD="${WALG_COMPRESSION_METHOD:-lz4}"
 SOCKDIR="$(dirname "$PGDATA")/sock"   # socket OUTSIDE PGDATA so wal-g's tar doesn't choke on it
