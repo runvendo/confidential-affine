@@ -16,7 +16,9 @@ export WALG_S3_PREFIX="s3://${R2_BUCKET:?need R2_BUCKET}/${WALG_PREFIX:?need WAL
 export WALG_LIBSODIUM_KEY="${ENCRYPTION_KEY:?need ENCRYPTION_KEY}"
 export WALG_LIBSODIUM_KEY_TRANSFORM="${WALG_LIBSODIUM_KEY_TRANSFORM:-none}"
 export WALG_COMPRESSION_METHOD="${WALG_COMPRESSION_METHOD:-lz4}"
-export PGHOST="$PGDATA"   # use the writable socket dir for local tools
+SOCKDIR="$(dirname "$PGDATA")/sock"   # socket OUTSIDE PGDATA so wal-g's tar doesn't choke on it
+mkdir -p "$SOCKDIR" 2>/dev/null || true
+export PGHOST="$SOCKDIR"   # writable socket dir for local tools, inside the data volume
 export PGUSER="${POSTGRES_USER:-postgres}"   # wal-g connects as the superuser to run backups
 export PGDATABASE="postgres"
 export PGPORT="5432"
@@ -54,5 +56,5 @@ exec docker-entrypoint.sh postgres \
   -c archive_mode=on \
   -c archive_command='wal-g wal-push "%p"' \
   -c archive_timeout=60 \
-  -c unix_socket_directories="$PGDATA" \
+  -c unix_socket_directories="$SOCKDIR" \
   "${@:2}"
