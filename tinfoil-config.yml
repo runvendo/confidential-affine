@@ -33,7 +33,7 @@ containers:
     command: ["sh", "-c", "node ./scripts/self-host-predeploy.js && exec node ./dist/main.js"]
 
   - name: "postgres"
-    image: "ghcr.io/runvendo/confidential-affine-postgres-walg@sha256:bf8570d18173c66f5d74a34fb0d6b1adef412d16ca221de5ccc4dcdcb8cff5a5"
+    image: "ghcr.io/runvendo/confidential-affine-postgres-walg@sha256:125636fdb12b78a7f72a295231750dbcd1916dfe7f0c4407c5b7363e8048ec23"
     restart: always
     networks: [web]
     env:
