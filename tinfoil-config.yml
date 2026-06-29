@@ -33,7 +33,7 @@ containers:
     command: ["sh", "-c", "node ./scripts/self-host-predeploy.js && exec node ./dist/main.js"]
 
   - name: "postgres"
-    image: "ghcr.io/runvendo/confidential-affine-postgres-walg@sha256:e256f97fdfda7ae815562bc69971a6b64aece3a40392458799f0d5e1e20a21b1"
+    image: "ghcr.io/runvendo/confidential-affine-postgres-walg@sha256:bf8570d18173c66f5d74a34fb0d6b1adef412d16ca221de5ccc4dcdcb8cff5a5"
     restart: always
     networks: [web]
     env:
@@ -41,7 +41,7 @@ containers:
       - POSTGRES_USER: "affine"
       - POSTGRES_PASSWORD: "affine_s1_local"
       - PGDATA: "/var/lib/postgresql/data/pgdata"
-      - WALG_PREFIX: "confidential-affine/s2-test/pg"
+      - WALG_PREFIX: "confidential-affine/s2b/pg"
       - WALG_LIBSODIUM_KEY_TRANSFORM: "base64"
       - AWS_REGION: "auto"
     secrets:
