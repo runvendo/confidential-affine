@@ -30,7 +30,16 @@ containers:
       - DATABASE_URL: "postgresql://affine:affine_s1_local@postgres:5432/affine"
       - REDIS_SERVER_HOST: "redis"
       - REDIS_SERVER_PORT: "6379"
-    command: ["sh", "-c", "node ./scripts/self-host-predeploy.js && exec node ./dist/main.js"]
+      - VENDO_OPENAI_API_KEY: "vendo"
+      - VENDO_OPENAI_BASE_URL: "http://modelproxy:8081/v1"
+    command:
+      - "sh"
+      - "-c"
+      - >-
+        mkdir -p /root/.affine/config
+        && printf '{"copilot":{"enabled":true,"providers.openai":{"apiKey":"%s","baseURL":"%s"}}}' "${VENDO_OPENAI_API_KEY}" "${VENDO_OPENAI_BASE_URL}" > /root/.affine/config/config.json
+        && node ./scripts/self-host-predeploy.js
+        && exec node ./dist/main.js
 
   - name: "postgres"
     image: "ghcr.io/runvendo/confidential-affine-postgres-walg@sha256:125636fdb12b78a7f72a295231750dbcd1916dfe7f0c4407c5b7363e8048ec23"
@@ -70,6 +79,17 @@ containers:
       interval: 10s
       timeout: 3s
       retries: 20
+
+  - name: "modelproxy"
+    image: "ghcr.io/runvendo/confidential-affine-modelproxy@sha256:b3fb19294b3bc690371fb5b88e90c43475f31a504c88ea4f109ded36afaa9020"
+    restart: always
+    networks: [web]
+    env:
+      - PORT: "8081"
+      - CHAT_MODEL: "gpt-oss-120b"
+      - EMBED_MODEL: "nomic-embed-text"
+    secrets:
+      - INFERENCE_API_KEY
 
 shim:
   upstream-port: 3010
