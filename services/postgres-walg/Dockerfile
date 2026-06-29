@@ -8,7 +8,7 @@ USER root
 ARG WALG_VERSION=v3.0.5
 RUN set -eux; \
     apt-get update; \
-    apt-get install -y --no-install-recommends ca-certificates wget; \
+    apt-get install -y --no-install-recommends ca-certificates wget curl; \
     wget -qO /tmp/walg.tar.gz "https://github.com/wal-g/wal-g/releases/download/${WALG_VERSION}/wal-g-pg-ubuntu-22.04-amd64.tar.gz"; \
     tar -xzf /tmp/walg.tar.gz -C /usr/local/bin; \
     mv /usr/local/bin/wal-g-pg-ubuntu-22.04-amd64 /usr/local/bin/wal-g; \
