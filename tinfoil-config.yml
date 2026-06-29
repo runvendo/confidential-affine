@@ -56,7 +56,7 @@ containers:
         && exec node ./dist/main.js
 
   - name: "postgres"
-    image: "ghcr.io/runvendo/confidential-affine-postgres-walg@sha256:d89951a568d2807d1cafa16cf35fe36c75ff08041cb467d624ad67e8547f2951"
+    image: "ghcr.io/runvendo/confidential-affine-postgres-walg@sha256:a5657c3cb8237578759395da4c04c585c414b9c08f7bf1f51e1a126dfeb6cf6d"
     restart: always
     networks: [web]
     env:
