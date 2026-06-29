@@ -51,6 +51,7 @@ containers:
       - >-
         mkdir -p /root/.affine/config
         && printf '{"copilot":{"enabled":true,"providers.openai":{"apiKey":"%s","baseURL":"%s"}}}' "${VENDO_OPENAI_API_KEY}" "${VENDO_OPENAI_BASE_URL}" > /root/.affine/config/config.json
+        && until node -e 'const s=require("net").connect(5432,"postgres",()=>{s.end();process.exit(0)});s.on("error",()=>process.exit(1));setTimeout(()=>process.exit(1),2000)' 2>/dev/null; do echo "[vendo] waiting for postgres (locked?)"; sleep 4; done
         && node ./scripts/self-host-predeploy.js
         && exec node ./dist/main.js
 
@@ -71,12 +72,9 @@ containers:
       - R2_SECRET_ACCESS_KEY
       - R2_ACCOUNT_ID
       - R2_BUCKET
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U affine -d affine"]
-      interval: 10s
-      timeout: 5s
-      retries: 30
-      start_period: 300s
+    # no healthcheck: postgres intentionally blocks (waiting for the unlock-gate
+    # key) until the user unlocks, which happens AFTER deploy. A healthcheck here
+    # would fail the deploy. It serves once unlocked.
 
   - name: "redis"
     image: "redis:7.2@sha256:e51cbc16f94b2426e80b9516db174a07d55e882217a1ec1d729b137b32e24e42"
