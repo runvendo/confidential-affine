@@ -33,22 +33,29 @@ containers:
     command: ["sh", "-c", "node ./scripts/self-host-predeploy.js && exec node ./dist/main.js"]
 
   - name: "postgres"
-    image: "pgvector/pgvector:pg16@sha256:131dcf7ff6a900545df8e7e092c270aa8c6db2f2c818e408cb45ec21316b74e6"
+    image: "ghcr.io/runvendo/confidential-affine-postgres-walg@sha256:e256f97fdfda7ae815562bc69971a6b64aece3a40392458799f0d5e1e20a21b1"
     restart: always
     networks: [web]
-    user: "postgres"
     env:
       - POSTGRES_DB: "affine"
       - POSTGRES_USER: "affine"
       - POSTGRES_PASSWORD: "affine_s1_local"
       - PGDATA: "/var/lib/postgresql/data/pgdata"
-    command: ["-c", "unix_socket_directories=/var/lib/postgresql/data"]
+      - WALG_PREFIX: "confidential-affine/s2-test/pg"
+      - WALG_LIBSODIUM_KEY_TRANSFORM: "base64"
+      - AWS_REGION: "auto"
+    secrets:
+      - R2_ACCESS_KEY_ID
+      - R2_SECRET_ACCESS_KEY
+      - R2_ACCOUNT_ID
+      - R2_BUCKET
+      - ENCRYPTION_KEY
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U affine -d affine"]
       interval: 10s
       timeout: 5s
       retries: 30
-      start_period: 180s
+      start_period: 300s
 
   - name: "redis"
     image: "redis:7.2@sha256:e51cbc16f94b2426e80b9516db174a07d55e882217a1ec1d729b137b32e24e42"
