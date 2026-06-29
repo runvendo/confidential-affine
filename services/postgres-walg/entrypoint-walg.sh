@@ -17,6 +17,9 @@ export WALG_LIBSODIUM_KEY="${ENCRYPTION_KEY:?need ENCRYPTION_KEY}"
 export WALG_LIBSODIUM_KEY_TRANSFORM="${WALG_LIBSODIUM_KEY_TRANSFORM:-none}"
 export WALG_COMPRESSION_METHOD="${WALG_COMPRESSION_METHOD:-lz4}"
 export PGHOST="$PGDATA"   # use the writable socket dir for local tools
+export PGUSER="${POSTGRES_USER:-postgres}"   # wal-g connects as the superuser to run backups
+export PGDATABASE="postgres"
+export PGPORT="5432"
 
 log() { echo "[walg-entrypoint] $*"; }
 
@@ -37,10 +40,13 @@ fi
 # --- After startup: take an initial base backup if none exists yet ---
 (
   for _ in $(seq 1 150); do pg_isready -q 2>/dev/null && break; sleep 2; done
-  if ! wal-g backup-list 2>/dev/null | grep -qE '^base_'; then
-    log "taking initial base backup -> R2"
-    wal-g backup-push "$PGDATA" && log "initial base backup done" || log "initial base backup FAILED"
-  fi
+  for attempt in $(seq 1 12); do
+    if wal-g backup-list 2>/dev/null | grep -qE '^base_'; then break; fi
+    log "base backup attempt ${attempt} -> R2"
+    if wal-g backup-push "$PGDATA"; then log "base backup done"; break; fi
+    log "base backup attempt ${attempt} failed; retrying in 15s"
+    sleep 15
+  done
 ) &
 
 # --- Hand off to the stock postgres entrypoint with continuous archiving on ---
