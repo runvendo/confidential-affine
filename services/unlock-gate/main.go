@@ -81,17 +81,25 @@ func randBytes(n int) []byte {
 
 // derive + unwrap (or first-run create) the data key from the passphrase.
 func (g *gate) unlock(ctx context.Context, passphrase string) error {
-	obj, err := g.r2.GetObject(ctx, g.bucket, g.keyObject, minio.GetObjectOptions{})
-	var raw []byte
-	if err == nil {
-		raw, err = io.ReadAll(obj)
+	// Only a genuine NoSuchKey is first-run. Never overwrite an existing wrap on
+	// a transient error or a wrong passphrase (that would destroy the data key).
+	if _, statErr := g.r2.StatObject(ctx, g.bucket, g.keyObject, minio.StatObjectOptions{}); statErr != nil {
+		if minio.ToErrorResponse(statErr).Code == "NoSuchKey" {
+			return g.firstRun(ctx, passphrase)
+		}
+		return statErr
 	}
-	if err != nil || len(raw) == 0 { // treat any read failure as first-run; create
-		return g.firstRun(ctx, passphrase)
+	obj, err := g.r2.GetObject(ctx, g.bucket, g.keyObject, minio.GetObjectOptions{})
+	if err != nil {
+		return err
+	}
+	raw, err := io.ReadAll(obj)
+	if err != nil {
+		return err
 	}
 	var kw keyWrap
 	if err := json.Unmarshal(raw, &kw); err != nil {
-		return g.firstRun(ctx, passphrase) // unreadable -> recreate
+		return errors.New("corrupt keywrap")
 	}
 	salt, _ := base64.StdEncoding.DecodeString(kw.Salt)
 	wrapped, _ := base64.StdEncoding.DecodeString(kw.Wrapped)
