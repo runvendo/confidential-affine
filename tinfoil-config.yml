@@ -1,7 +1,8 @@
 # Public Tinfoil measured config — Vendo confidential Affine.
 # S1 = stock Affine + in-enclave Postgres+Redis, debug, no durability yet.
 # Tinfoil enclave = ReadonlyRootfs + CapDrop=ALL + no setuid → run rootless,
-# declare writable volumes for data/runtime dirs.
+# declare writable volumes for data/runtime dirs. The shim wires its upstream
+# to the FIRST container, so the app (affine) must be first.
 cvm-version: 0.10.4
 cpus: 8
 memory: 16384
@@ -11,6 +12,26 @@ networks:
     egress: open
 
 containers:
+  - name: "affine"
+    image: "ghcr.io/toeverything/affine@sha256:725aaceb0ed94d4b832ae6ef9414503291c9b2b4f60bd6f3c7eef571b6149add"
+    restart: always
+    networks: [web]
+    volumes:
+      - /mnt/ramdisk/affinedata:/root/.affine
+      - /mnt/ramdisk/affinetmp:/tmp
+      - /mnt/ramdisk/affinesrc:/app/src
+    env:
+      - NODE_ENV: "production"
+      - YARN_CACHE_FOLDER: "/tmp/.yarn-cache"
+      - AFFINE_SERVER_PORT: "3010"
+      - PORT: "3010"
+      - AFFINE_SERVER_EXTERNAL_URL: "http://localhost:3010"
+      - AFFINE_INDEXER_ENABLED: "false"
+      - DATABASE_URL: "postgresql://affine:affine_s1_local@postgres:5432/affine"
+      - REDIS_SERVER_HOST: "redis"
+      - REDIS_SERVER_PORT: "6379"
+    command: ["sh", "-c", "node ./scripts/self-host-predeploy.js && exec node ./dist/main.js"]
+
   - name: "postgres"
     image: "pgvector/pgvector:pg16@sha256:131dcf7ff6a900545df8e7e092c270aa8c6db2f2c818e408cb45ec21316b74e6"
     restart: always
@@ -42,26 +63,6 @@ containers:
       interval: 10s
       timeout: 3s
       retries: 20
-
-  - name: "affine"
-    image: "ghcr.io/toeverything/affine@sha256:725aaceb0ed94d4b832ae6ef9414503291c9b2b4f60bd6f3c7eef571b6149add"
-    restart: always
-    networks: [web]
-    volumes:
-      - /mnt/ramdisk/affinedata:/root/.affine
-      - /mnt/ramdisk/affinetmp:/tmp
-      - /mnt/ramdisk/affinesrc:/app/src
-    env:
-      - NODE_ENV: "production"
-      - YARN_CACHE_FOLDER: "/tmp/.yarn-cache"
-      - AFFINE_SERVER_PORT: "3010"
-      - PORT: "3010"
-      - AFFINE_SERVER_EXTERNAL_URL: "http://localhost:3010"
-      - AFFINE_INDEXER_ENABLED: "false"
-      - DATABASE_URL: "postgresql://affine:affine_s1_local@postgres:5432/affine"
-      - REDIS_SERVER_HOST: "redis"
-      - REDIS_SERVER_PORT: "6379"
-    command: ["sh", "-c", "node ./scripts/self-host-predeploy.js && exec node ./dist/main.js"]
 
 shim:
   upstream-port: 3010
