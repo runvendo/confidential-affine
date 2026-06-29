@@ -50,6 +50,7 @@ containers:
     volumes:
       - /mnt/ramdisk/affinedata:/root/.affine
       - /mnt/ramdisk/affinetmp:/tmp
+      - /mnt/ramdisk/affinesrc:/app/src
     env:
       - NODE_ENV: "production"
       - YARN_CACHE_FOLDER: "/tmp/.yarn-cache"
