@@ -1,7 +1,7 @@
 # Public Tinfoil measured config — Vendo confidential Affine.
-# PUBLIC by design: Tinfoil measures this file for attestation. App images are
-# pinned by @sha256 digest. S1 = stock Affine + in-enclave Postgres+Redis, debug,
-# no durability yet (WAL-G/unlock come in later milestones).
+# S1 = stock Affine + in-enclave Postgres+Redis, debug, no durability yet.
+# Tinfoil enclave = ReadonlyRootfs + CapDrop=ALL + no setuid → run rootless,
+# declare writable volumes for data/runtime dirs.
 cvm-version: 0.10.4
 cpus: 8
 memory: 16384
@@ -15,12 +15,15 @@ containers:
     image: "pgvector/pgvector:pg16@sha256:131dcf7ff6a900545df8e7e092c270aa8c6db2f2c818e408cb45ec21316b74e6"
     restart: always
     networks: [web]
+    user: "postgres"
     env:
       - POSTGRES_DB: "affine"
       - POSTGRES_USER: "affine"
       - POSTGRES_PASSWORD: "affine_s1_local"
+      - PGDATA: "/var/lib/postgresql/data/pgdata"
+    command: ["-c", "unix_socket_directories=/var/lib/postgresql/data"]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U affine -d affine"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U affine -d affine"]
       interval: 10s
       timeout: 5s
       retries: 30
@@ -30,6 +33,10 @@ containers:
     image: "redis:7.2@sha256:e51cbc16f94b2426e80b9516db174a07d55e882217a1ec1d729b137b32e24e42"
     restart: always
     networks: [web]
+    entrypoint: ["redis-server"]
+    command: ["--dir", "/data", "--save", ""]
+    volumes:
+      - /mnt/ramdisk/redisdata:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -40,6 +47,8 @@ containers:
     image: "ghcr.io/toeverything/affine@sha256:725aaceb0ed94d4b832ae6ef9414503291c9b2b4f60bd6f3c7eef571b6149add"
     restart: always
     networks: [web]
+    volumes:
+      - /mnt/ramdisk/affinedata:/root/.affine
     env:
       - NODE_ENV: "production"
       - AFFINE_SERVER_PORT: "3010"
