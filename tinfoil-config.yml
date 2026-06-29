@@ -12,6 +12,19 @@ networks:
     egress: open
 
 containers:
+  - name: "unlock"
+    image: "ghcr.io/runvendo/confidential-affine-unlock-gate@sha256:50832b9105dbde14ce140879526e24199c88c2ce598a7e45018e891554caed73"
+    restart: always
+    networks: [web]
+    env:
+      - AFFINE_UPSTREAM: "http://affine:3010"
+      - KEYWRAP_OBJECT: "confidential-affine/s3/keywrap.json"
+    secrets:
+      - R2_ACCESS_KEY_ID
+      - R2_SECRET_ACCESS_KEY
+      - R2_ACCOUNT_ID
+      - R2_BUCKET
+
   - name: "affine"
     image: "ghcr.io/toeverything/affine@sha256:725aaceb0ed94d4b832ae6ef9414503291c9b2b4f60bd6f3c7eef571b6149add"
     restart: always
@@ -42,7 +55,7 @@ containers:
         && exec node ./dist/main.js
 
   - name: "postgres"
-    image: "ghcr.io/runvendo/confidential-affine-postgres-walg@sha256:125636fdb12b78a7f72a295231750dbcd1916dfe7f0c4407c5b7363e8048ec23"
+    image: "ghcr.io/runvendo/confidential-affine-postgres-walg@sha256:d89951a568d2807d1cafa16cf35fe36c75ff08041cb467d624ad67e8547f2951"
     restart: always
     networks: [web]
     env:
@@ -50,7 +63,7 @@ containers:
       - POSTGRES_USER: "affine"
       - POSTGRES_PASSWORD: "affine_s1_local"
       - PGDATA: "/var/lib/postgresql/data/pgdata"
-      - WALG_PREFIX: "confidential-affine/s2b/pg"
+      - WALG_PREFIX: "confidential-affine/s3/pg"
       - WALG_LIBSODIUM_KEY_TRANSFORM: "base64"
       - AWS_REGION: "auto"
     secrets:
@@ -58,7 +71,6 @@ containers:
       - R2_SECRET_ACCESS_KEY
       - R2_ACCOUNT_ID
       - R2_BUCKET
-      - ENCRYPTION_KEY
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U affine -d affine"]
       interval: 10s
