@@ -49,8 +49,10 @@ containers:
     networks: [web]
     volumes:
       - /mnt/ramdisk/affinedata:/root/.affine
+      - /mnt/ramdisk/affinetmp:/tmp
     env:
       - NODE_ENV: "production"
+      - YARN_CACHE_FOLDER: "/tmp/.yarn-cache"
       - AFFINE_SERVER_PORT: "3010"
       - PORT: "3010"
       - AFFINE_SERVER_EXTERNAL_URL: "http://localhost:3010"
