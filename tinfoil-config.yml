@@ -24,6 +24,7 @@ containers:
       interval: 10s
       timeout: 5s
       retries: 30
+      start_period: 180s
 
   - name: "redis"
     image: "redis:7.2@sha256:e51cbc16f94b2426e80b9516db174a07d55e882217a1ec1d729b137b32e24e42"
