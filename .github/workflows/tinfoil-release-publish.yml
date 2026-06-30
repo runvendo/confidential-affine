@@ -18,3 +18,14 @@ jobs:
         with:
           config-file: ${{ github.workspace }}/tinfoil-config.yml
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The in-browser tinfoil-js Verifier resolves the expected measurement from
+      # the repo's GitHub "latest" release. A confidential deployment runs the tag
+      # Vendo pins (TINFOIL_CONFIG_TAG), so that release MUST be "latest" or the
+      # unlock page's verify-gate fails closed against a genuine enclave. Mark it.
+      - name: Mark release as latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: gh release edit "$TAG" --repo "$REPO" --latest
