@@ -13,7 +13,7 @@ networks:
 
 containers:
   - name: "unlock"
-    image: "ghcr.io/runvendo/confidential-affine-unlock-gate@sha256:50832b9105dbde14ce140879526e24199c88c2ce598a7e45018e891554caed73"
+    image: "ghcr.io/runvendo/confidential-affine-unlock-gate@sha256:683e83a4d918d956a66f60110f29c8b23d1c3727880de3f8ac74573e44dc9592"
     restart: always
     networks: [web]
     env:
