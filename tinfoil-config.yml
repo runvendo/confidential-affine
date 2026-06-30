@@ -4,7 +4,7 @@
 # declare writable volumes for data/runtime dirs. The shim wires its upstream
 # to the FIRST container, so the app (affine) must be first.
 cvm-version: 0.10.4
-cpus: 8
+cpus: 2
 memory: 16384
 
 networks:

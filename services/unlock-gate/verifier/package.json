@@ -1,0 +1,15 @@
+{
+  "name": "unlock-gate-verifier",
+  "version": "1.0.0",
+  "description": "Browser-native Tinfoil attestation verify-gate bundle for the confidential-affine unlock page.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/verify.js --bundle --minify --format=iife --target=es2020 --platform=browser --alias:zlib=./src/zlib-shim.js --outfile=dist/verifier.bundle.js"
+  },
+  "license": "AGPL-3.0-or-later",
+  "dependencies": {
+    "esbuild": "0.28.1",
+    "tinfoil": "1.1.6"
+  }
+}

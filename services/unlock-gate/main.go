@@ -12,6 +12,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	_ "embed"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -29,6 +30,17 @@ import (
 	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/nacl/secretbox"
 )
+
+// verifierJS is the self-contained, minified browser bundle that runs Tinfoil's
+// attestation verification client-side. It is embedded into the binary (the
+// enclave is ReadonlyRootfs + distroless + nonroot, so nothing is read from
+// disk at runtime) and self-served from this gate at /__verifier.js so the
+// verifier code itself is covered by the attestation it checks. Built from
+// verifier/src by `npm run build` (see verifier/package.json); the Docker build
+// runs that build before `go build`.
+//
+//go:embed verifier/dist/verifier.bundle.js
+var verifierJS []byte
 
 const (
 	argonTime    = 3
@@ -180,6 +192,11 @@ func (g *gate) public(w http.ResponseWriter, r *http.Request) {
 	case "/__unlock":
 		g.handleUnlock(w, r)
 		return
+	case "/__verifier.js":
+		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		w.Write(verifierJS)
+		return
 	}
 	if g.unlocked() {
 		g.proxy.ServeHTTP(w, r)
@@ -232,17 +249,51 @@ func main() {
 	log.Fatal(http.ListenAndServe(":3010", http.HandlerFunc(g.public)))
 }
 
+// unlockHTML gates passphrase entry behind in-browser attestation verification.
+// The page loads the self-hosted /__verifier.js (embedded in this binary), runs
+// Tinfoil's client-side verification against this enclave's own host, and only
+// enables the passphrase field after it confirms a genuine confidential enclave
+// running the published runvendo/confidential-affine release. If verification
+// fails, the field stays disabled and a hard error is shown.
 const unlockHTML = `<!doctype html><html><head><meta charset=utf-8><title>Unlock your private workspace</title>
 <meta name=viewport content="width=device-width,initial-scale=1">
 <style>body{font:16px system-ui;max-width:34rem;margin:6rem auto;padding:0 1rem;color:#111}
 h1{font-size:1.4rem}input,button{font:inherit;padding:.6rem .8rem;border-radius:.5rem;border:1px solid #ccc;width:100%;box-sizing:border-box}
-button{margin-top:.8rem;background:#111;color:#fff;border:0;cursor:pointer}.muted{color:#666;font-size:.9rem}#err{color:#c00;margin-top:.6rem}</style></head>
+button{margin-top:.8rem;background:#111;color:#fff;border:0;cursor:pointer}
+button:disabled{background:#999;cursor:not-allowed}input:disabled{background:#f4f4f4;color:#999}
+.muted{color:#666;font-size:.9rem}#err{color:#c00;margin-top:.6rem}
+#att{margin:1rem 0;padding:.7rem .9rem;border-radius:.5rem;border:1px solid #e2e2e2;font-size:.92rem}
+#att.checking{border-color:#cfe0ff;background:#f3f7ff;color:#1c4ea8}
+#att.ok{border-color:#bfe3c6;background:#f2faf4;color:#1d6b32}
+#att.fail{border-color:#f0c0c0;background:#fdf3f3;color:#a11}
+#att code{font-size:.82rem;word-break:break-all;color:inherit;opacity:.85}
+.spin{display:inline-block;width:.8rem;height:.8rem;margin-right:.45rem;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:s .7s linear infinite;vertical-align:-1px}
+@keyframes s{to{transform:rotate(360deg)}}</style></head>
 <body><h1>Unlock your private workspace</h1>
 <p class=muted>This workspace is end-to-end encrypted. Enter your passphrase to unlock it. We cannot recover it for you.</p>
-<input id=p type=password placeholder="Workspace passphrase" autofocus>
-<button onclick=u()>Unlock</button><div id=err></div>
-<script>async function u(){document.getElementById('err').textContent='';
-var r=await fetch('/__unlock',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({passphrase:document.getElementById('p').value})});
+<div id=att class=checking><span class=spin></span>Verifying this is a genuine confidential enclave…</div>
+<input id=p type=password placeholder="Workspace passphrase" autofocus disabled>
+<button id=unlock onclick=u() disabled>Unlock</button><div id=err></div>
+<script src="/__verifier.js"></script>
+<script>
+var P=document.getElementById('p'),B=document.getElementById('unlock'),A=document.getElementById('att'),E=document.getElementById('err');
+function esc(s){return String(s).replace(/[<&>]/g,function(c){return c==='<'?'&lt;':c==='>'?'&gt;':'&amp;'});}
+function failStep(doc){if(!doc||!doc.steps)return'';var s=doc.steps,o=['fetchDigest','verifyCode','verifyEnclave','compareMeasurements','verifyCertificate','otherError'];
+for(var i=0;i<o.length;i++){var st=s[o[i]];if(st&&st.status==='failed')return o[i]+(st.error?': '+st.error:'');}return'';}
+function fail(msg){A.className='fail';
+A.innerHTML='<strong>Could not verify this is a genuine confidential enclave — do not enter your passphrase.</strong>'+(msg?'<br><span class=muted>'+esc(msg)+'</span>':'');
+P.disabled=true;B.disabled=true;P.value='';}
+function pass(doc){A.className='ok';var m=doc&&(doc.releaseDigest||doc.codeFingerprint)||'';
+A.innerHTML='<strong>Verified genuine confidential enclave.</strong> Running the published runvendo/confidential-affine release.'+(m?'<br><code>'+esc(m)+'</code>':'');
+P.disabled=false;B.disabled=false;P.focus();}
+async function verify(){
+if(typeof window.TinfoilVerify!=='function'){fail('Attestation verifier failed to load.');return;}
+var res;try{res=await window.TinfoilVerify(location.host,'runvendo/confidential-affine');}catch(e){fail((e&&e.message)||'verification error');return;}
+if(res&&res.ok){pass(res.doc);}else{fail((res&&res.error)||failStep(res&&res.doc)||'attestation did not verify');}}
+async function u(){if(B.disabled)return;E.textContent='';
+var r=await fetch('/__unlock',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({passphrase:P.value})});
 if(r.ok){document.body.innerHTML='<h1>Unlocked. Starting your workspace…</h1><p class=muted>Reloading shortly.</p>';setTimeout(function(){location.reload()},8000);}
-else{document.getElementById('err').textContent='Unlock failed. Check your passphrase.';}}
-document.getElementById('p').addEventListener('keydown',function(e){if(e.key==='Enter')u()});</script></body></html>`
+else{E.textContent='Unlock failed. Check your passphrase.';}}
+P.addEventListener('keydown',function(e){if(e.key==='Enter')u()});
+verify();
+</script></body></html>`
