@@ -18,10 +18,7 @@ containers:
     networks: [web]
     env:
       - AFFINE_UPSTREAM: "http://affine:3010"
-      # KEYWRAP_OBJECT is injected per-deployment by Vendo's TinfoilProvider as a
-      # Tinfoil `variable` (keyed by the immutable deployment id) — NOT hardcoded
-      # here, so each deployment gets an isolated keywrap. A literal here would
-      # shadow the variable (all deployments would share one keywrap).
+      - KEYWRAP_OBJECT: "confidential-affine/s3/keywrap.json"
     secrets:
       - R2_ACCESS_KEY_ID
       - R2_SECRET_ACCESS_KEY
@@ -41,8 +38,7 @@ containers:
       - YARN_CACHE_FOLDER: "/tmp/.yarn-cache"
       - AFFINE_SERVER_PORT: "3010"
       - PORT: "3010"
-      # AFFINE_SERVER_EXTERNAL_URL injected per-deployment (the enclave's own
-      # attested domain) by TinfoilProvider — not hardcoded.
+      - AFFINE_SERVER_EXTERNAL_URL: "http://localhost:3010"
       - AFFINE_INDEXER_ENABLED: "false"
       - DATABASE_URL: "postgresql://affine:affine_s1_local@postgres:5432/affine"
       - REDIS_SERVER_HOST: "redis"
@@ -68,10 +64,7 @@ containers:
       - POSTGRES_USER: "affine"
       - POSTGRES_PASSWORD: "affine_s1_local"
       - PGDATA: "/var/lib/postgresql/data/pgdata"
-      # WALG_PREFIX injected per-deployment by TinfoilProvider (keyed by the
-      # immutable deployment id) — not hardcoded, so each tenant's encrypted WAL
-      # lives under its own R2 prefix. A literal here would collapse all tenants
-      # onto one WAL stream.
+      - WALG_PREFIX: "confidential-affine/s3/pg"
       - WALG_LIBSODIUM_KEY_TRANSFORM: "base64"
       - AWS_REGION: "auto"
     secrets:
