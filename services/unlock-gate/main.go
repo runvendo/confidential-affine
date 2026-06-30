@@ -197,47 +197,6 @@ func (g *gate) public(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Write(verifierJS)
 		return
-	case "/__whoami":
-		// DIAGNOSTIC (temporary): surface every per-deployment identity the
-		// container can see at runtime, so we can pick a TRUSTED + UNIQUE source
-		// to derive per-deployment R2 paths from (Tinfoil has no measurement-
-		// neutral per-deployment input channel). Leaks NO secret values: env is
-		// reported by KEY NAME only, plus values for clearly-non-secret identity
-		// keys. Removed before any production release.
-		host, _ := os.Hostname()
-		var envKeys []string
-		idVals := map[string]string{}
-		for _, kv := range os.Environ() {
-			eq := -1
-			for i := 0; i < len(kv); i++ {
-				if kv[i] == '=' {
-					eq = i
-					break
-				}
-			}
-			if eq < 0 {
-				continue
-			}
-			k, v := kv[:eq], kv[eq+1:]
-			envKeys = append(envKeys, k)
-			switch k {
-			case "HOSTNAME", "TINFOIL_DOMAIN", "TINFOIL_ENCLAVE", "TINFOIL_DEPLOYMENT_ID",
-				"ENCLAVE_DOMAIN", "DEPLOYMENT_ID", "DOMAIN", "ENCLAVE", "NAME", "CVM_DOMAIN":
-				idVals[k] = v
-			}
-		}
-		out := map[string]any{
-			"req_host":          r.Host,
-			"x_forwarded_host":  r.Header.Get("X-Forwarded-Host"),
-			"x_forwarded_for":   r.Header.Get("X-Forwarded-For"),
-			"x_forwarded_proto": r.Header.Get("X-Forwarded-Proto"),
-			"os_hostname":       host,
-			"id_env_values":     idVals,
-			"env_keys":          envKeys,
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(out)
-		return
 	}
 	if g.unlocked() {
 		g.proxy.ServeHTTP(w, r)
