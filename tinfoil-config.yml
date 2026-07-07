@@ -18,7 +18,7 @@ containers:
     networks: [web]
     env:
       - AFFINE_UPSTREAM: "http://affine:3010"
-      - KEYWRAP_OBJECT: "confidential-affine/s3/keywrap.json"
+      - KEYWRAP_OBJECT
     secrets:
       - R2_ACCESS_KEY_ID
       - R2_SECRET_ACCESS_KEY
@@ -38,7 +38,7 @@ containers:
       - YARN_CACHE_FOLDER: "/tmp/.yarn-cache"
       - AFFINE_SERVER_PORT: "3010"
       - PORT: "3010"
-      - AFFINE_SERVER_EXTERNAL_URL: "http://localhost:3010"
+      - AFFINE_SERVER_EXTERNAL_URL
       - AFFINE_INDEXER_ENABLED: "false"
       - DATABASE_URL: "postgresql://affine:affine_s1_local@postgres:5432/affine"
       - REDIS_SERVER_HOST: "redis"
@@ -64,7 +64,7 @@ containers:
       - POSTGRES_USER: "affine"
       - POSTGRES_PASSWORD: "affine_s1_local"
       - PGDATA: "/var/lib/postgresql/data/pgdata"
-      - WALG_PREFIX: "confidential-affine/s3/pg"
+      - WALG_PREFIX
       - WALG_LIBSODIUM_KEY_TRANSFORM: "base64"
       - AWS_REGION: "auto"
     secrets:
